@@ -23,13 +23,13 @@ int main()
 
     if (!inputFile.is_open()) 
     {
-        cerr << "입력 파일 'test.inp'를 열 수 없습니다." << endl;
+        cerr << "Could not open input file 'test.inp'." << endl;
         return 1;
     }
 
     if (!outputFile.is_open()) 
     {
-        cerr << "출력 파일 'test.out'을 열 수 없습니다." << endl;
+        cerr << "Could not open output file 'test.out'." << endl;
         return 1;
     }
 
