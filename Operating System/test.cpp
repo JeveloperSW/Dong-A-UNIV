@@ -44,20 +44,20 @@ int main()
         inputFile >> people[i].id >> people[i].firstName >> people[i].lastName;
     }
 
-    // Sort by Unique Number Criteria
+    // Sort by unique number
     sort(people.begin(), people.end(), [](const Person& a, const Person& b) 
     {
         return a.id < b.id;
     });
 
-    // Find the longest first name length
+    // Find the longest name length
     int maxFirstNameLength = 0;
     for (const auto& person : people) 
     {
         maxFirstNameLength = max(maxFirstNameLength, (int)person.firstName.length());
     }
 
-    // Sorted information output
+    // Sorted data output
     for (const auto& person : people) 
     {
         outputFile << person.id << " "
@@ -72,7 +72,7 @@ int main()
         lastNameMap[person.lastName].push_back(person.firstName);
     }
 
-    // Make sure you have the same Last name
+    // Check for the same Last name
     bool sameLastNameExists = false;
     for (const auto& pair : lastNameMap) 
     {
@@ -82,7 +82,8 @@ int main()
             break;
         }
     }
-
+    
+    // Output if there is same Last name
     if (sameLastNameExists) 
     {
         outputFile << endl;
