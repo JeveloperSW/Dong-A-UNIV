@@ -1,0 +1,261 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <queue>
+#include <string>
+
+using namespace std;
+
+int n, m;
+vector<int> totalResources;
+vector<int> available;
+vector<vector<int>> maxMatrix;
+vector<vector<int>> allocation;
+vector<vector<int>> need;
+
+struct Request 
+{
+    int pid;
+    vector<int> res;
+};
+
+queue<Request> pendingRequests;
+
+void calculateNeed() 
+{
+    need.resize(n, vector<int>(m));
+    for (int i = 0; i < n; ++i) 
+    {
+        for (int j = 0; j < m; ++j) 
+        {
+            need[i][j] = maxMatrix[i][j] - allocation[i][j];
+        }
+    }
+}
+
+bool isSafeAfterGrant(int pid, const vector<int>& req) 
+{
+    vector<int> work = available;
+    vector<vector<int>> allocTemp = allocation;
+    vector<vector<int>> needTemp = need;
+    vector<bool> finish(n, false);
+
+    for (int j = 0; j < m; ++j) 
+    {
+        work[j] -= req[j];
+        allocTemp[pid][j] += req[j];
+        needTemp[pid][j] -= req[j];
+    }
+
+    while (true) 
+    {
+        bool progressed = false;
+        for (int i = 0; i < n; ++i) 
+        {
+            if (!finish[i]) 
+            {
+                bool canFinish = true;
+                for (int j = 0; j < m; ++j) 
+                {
+                    if (needTemp[i][j] > work[j]) 
+                    {
+                        canFinish = false;
+                        break;
+                    }
+                }
+                if (canFinish) 
+                {
+                    for (int j = 0; j < m; ++j) 
+                    {
+                        work[j] += allocTemp[i][j];
+                    }
+                    finish[i] = true;
+                    progressed = true;
+                }
+            }
+        }
+        if (!progressed) break;
+    }
+
+    for (bool f : finish) 
+    {
+        if (!f) return false;
+    }
+
+    return true;
+}
+
+void printAvailable(ofstream& fout) 
+{
+    for (int j = 0; j < m; ++j) 
+    {
+        fout << available[j] << (j < m - 1 ? ' ' : '\n');
+    }
+}
+
+void tryPendingRequests(ofstream& fout) 
+{
+    queue<Request> temp;
+    bool granted = false;
+    vector<int> availableBeforePending = available; 
+
+    int size = pendingRequests.size();
+    for (int i = 0; i < size; ++i) 
+    {
+        Request r = pendingRequests.front();
+        pendingRequests.pop();
+
+        bool valid = true;
+        for (int j = 0; j < m; ++j) 
+        {
+            if (r.res[j] > need[r.pid][j]) 
+            {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid && isSafeAfterGrant(r.pid, r.res)) 
+        {
+            for (int j = 0; j < m; ++j) 
+            {
+                available[j] -= r.res[j];
+                allocation[r.pid][j] += r.res[j];
+                need[r.pid][j] -= r.res[j];
+            }
+            granted = true;
+        } 
+        else 
+        {
+            temp.push(r);
+        }
+    }
+
+    pendingRequests = temp;
+    if (granted) 
+    {
+    } 
+    else if (!pendingRequests.empty() && available != availableBeforePending) 
+    {
+        printAvailable(fout); 
+    }
+}
+
+int main() 
+{
+    ifstream fin("banker.inp");
+    ofstream fout("banker.out");
+    
+    if (!fin.is_open() || !fout.is_open())
+    {
+        cerr << "Could not open file" << endl;
+        return 1;
+    }
+
+    fin >> n >> m;
+
+    totalResources.resize(m);
+    available.resize(m);
+    for (int i = 0; i < m; ++i) 
+    {
+        fin >> totalResources[i];
+    }
+
+    maxMatrix.resize(n, vector<int>(m));
+    allocation.resize(n, vector<int>(m));
+
+    string line;
+    getline(fin, line);
+    for (int i = 0; i < n; ++i) 
+    {
+        for (int j = 0; j < m; ++j) 
+        {
+            fin >> maxMatrix[i][j];
+        }
+    }
+
+    getline(fin, line);
+    for (int i = 0; i < n; ++i) 
+    {
+        for (int j = 0; j < m; ++j) 
+        {
+            fin >> allocation[i][j];
+        }
+    }
+
+    calculateNeed();
+
+    for (int j = 0; j < m; ++j) 
+    {
+        int used = 0;
+        for (int i = 0; i < n; ++i) 
+        {
+            used += allocation[i][j];
+        }
+        available[j] = totalResources[j] - used;
+    }
+
+    while (getline(fin, line)) 
+    {
+        if (line.empty()) continue;
+        stringstream ss(line);
+        string cmd;
+        ss >> cmd;
+
+        if (cmd == "quit") break;
+
+        int pid;
+        ss >> pid;
+        vector<int> res(m);
+        for (int i = 0; i < m; ++i) 
+        {
+            ss >> res[i];
+        }
+
+        if (cmd == "request") 
+        {
+            bool valid = true;
+            for (int i = 0; i < m; ++i) 
+            {
+                if (res[i] > need[pid][i]) 
+                {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid && isSafeAfterGrant(pid, res)) 
+            {
+                for (int i = 0; i < m; ++i) 
+                {
+                    available[i] -= res[i];
+                    allocation[pid][i] += res[i];
+                    need[pid][i] -= res[i];
+                }
+            } 
+            else if (valid) 
+            {
+                pendingRequests.push({pid, res});
+            }
+            printAvailable(fout);
+        } 
+        else if (cmd == "release") 
+        {
+            for (int i = 0; i < m; ++i) 
+            {
+                allocation[pid][i] -= res[i];
+                available[i] += res[i];
+                need[pid][i] += res[i];
+                
+            }
+            tryPendingRequests(fout);
+            printAvailable(fout);
+        }
+    }
+
+    fin.close();
+    fout.close();
+
+    return 0;
+}
