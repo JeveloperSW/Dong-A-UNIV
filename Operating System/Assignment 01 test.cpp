@@ -9,7 +9,7 @@
 
 using namespace std;
 
-struct Person
+struct Person 
 {
     int id;
     string firstName;
@@ -21,84 +21,52 @@ int main()
     ifstream inputFile("test.inp");
     ofstream outputFile("test.out");
 
-    if (!inputFile.is_open()) 
+    if (!inputFile || !outputFile) 
     {
-        cerr << "Could not open input file 'test.inp'." << endl;
-        return 1;
-    }
-
-    if (!outputFile.is_open()) 
-    {
-        cerr << "Could not open output file 'test.out'." << endl;
+        cerr << "Could not open file" << endl;
         return 1;
     }
 
     int N;
     inputFile >> N;
-
     vector<Person> people(N);
 
-    // Read Data
-    for (int i = 0; i < N; ++i) 
+    for (auto& person : people) 
     {
-        inputFile >> people[i].id >> people[i].firstName >> people[i].lastName;
+        inputFile >> person.id >> person.firstName >> person.lastName;
     }
 
-    // Sort by unique number
-    sort(people.begin(), people.end(), [](const Person& a, const Person& b) 
+    sort(people.begin(), people.end(), [](const Person& a, const Person& b))
     {
         return a.id < b.id;
-    });
+    };
 
-    // Find the longest name length
-    int maxFirstNameLength = 0;
-    for (const auto& person : people) 
+    size_t maxFirstLen = 0;
+    for (const auto& p : people)
+        maxFirstLen = max(maxFirstLen, p.firstName.size());
+
+    for (const auto& p : people) 
     {
-        maxFirstNameLength = max(maxFirstNameLength, (int)person.firstName.length());
+        outputFile << p.id << " "
+                   << left << setw(static_cast<int>(maxFirstLen + 1)) << p.firstName
+                   << p.lastName << endl;
     }
 
-    // Sorted data output
-    for (const auto& person : people) 
-    {
-        outputFile << person.id << " "
-            << left << setw(maxFirstNameLength + 1) << person.firstName
-            << person.lastName << endl;
-    }
-
-    // Same Last name analysis
     map<string, vector<string>> lastNameMap;
-    for (const auto& person : people) 
-    {
-        lastNameMap[person.lastName].push_back(person.firstName);
-    }
+    for (const auto& p : people)
+        lastNameMap[p.lastName].push_back(p.firstName);
 
-    // Check for the same Last name
-    bool sameLastNameExists = false;
-    for (const auto& pair : lastNameMap) 
-    {
-        if (pair.second.size() > 1) 
-        {
-            sameLastNameExists = true;
-            break;
-        }
-    }
-    
-    // Output if there is same Last name
-    if (sameLastNameExists) 
+    bool hasDuplicates = any_of(lastNameMap.begin(), lastNameMap.end(), [](const auto& pair) { return pair.second.size() > 1; });
+
+    if (hasDuplicates) 
     {
         outputFile << endl;
-
-        for (const auto& pair : lastNameMap) 
+        for (const auto& [last, firsts] : lastNameMap) 
         {
-            if (pair.second.size() > 1) 
-            {
-                outputFile << pair.first << " " << pair.second.size() << endl;
-            }
+            if (firsts.size() > 1)
+                outputFile << last << " " << firsts.size() << endl;
         }
     }
-
-    inputFile.close();
-    outputFile.close();
 
     return 0;
 }
